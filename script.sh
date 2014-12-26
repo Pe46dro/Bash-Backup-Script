@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# Linux FTP Backup Script
+# Version: 1.0
+# Script by: Pietro Marangon
+# Skype: pe46dro
+# Email: pietro.marangon@gmail.com
+
 ########################
 # Edit Below This Line #
 ########################
@@ -49,4 +55,4 @@ echo "Please use FTP, SFTP isn't supported"
 else
 echo "Please select a valid type"
 fi
-# End of script
+#END
