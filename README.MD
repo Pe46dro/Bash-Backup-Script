@@ -10,13 +10,13 @@ How it works:
 
 If you have some problem open an issues on GitHub
 
-FAQ:
+##FAQ;
 
-* >Q: How can i make backup automatic?
-* A: You can use crontab (on linux)
+* >Q: How can I make backups automatic?
+* A: You can use crontab (on linux) [link](http://www.cyberciti.biz/faq/how-do-i-add-jobs-to-cron-under-linux-or-unix-oses/)
 
-* >Q: Why i can't start script?
-* A: Try change file permission
+* >Q: Why can't I start the script?
+* A: Try changing the files permission [link](http://www.cyberciti.biz/faq/how-to-use-chmod-and-chown-command/)
 
-* >Q: Work on all linux distro?
-* A: This script was tested on Ubuntu 12/14,Debian and Centos 6 and work whitout problem
+* >Q: Will this work on all linux distros?
+* A: This script was tested on Ubuntu 12/14,Debian and Centos 6 and has worked whitout any problems
