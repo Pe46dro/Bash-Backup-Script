@@ -12,11 +12,11 @@ If you have some problem open an issues on GitHub
 
 ##FAQ;
 
-* >Q: How can I make backups automatic?
+* > Q: How can I make backups automatic?
 * A: You can use crontab (on linux) [link](http://www.cyberciti.biz/faq/how-do-i-add-jobs-to-cron-under-linux-or-unix-oses/)
 
-* >Q: Why can't I start the script?
+* > Q: Why can't I start the script?
 * A: Try changing the files permission [link](http://www.cyberciti.biz/faq/how-to-use-chmod-and-chown-command/)
 
-* >Q: Will this work on all linux distros?
+* > Q: Will this work on all linux distros?
 * A: This script was tested on Ubuntu 12/14,Debian and Centos 6 and has worked whitout any problems
