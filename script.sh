@@ -6,6 +6,11 @@
 # Skype: pe46dro
 # Email: pietro.marangon@gmail.com
 
+clean_backup() {
+  rm -f ./$FILE
+  echo 'Local Backup Removed'
+}
+
 ########################
 # Edit Below This Line #
 ########################
@@ -35,24 +40,28 @@ TYPE=1
 
 d=$(date --iso)
 
-if [ $TYPE -eq 1 ]
-then
 FILE=$FILE"_"$d".tar.gz"
 tar -czvf ./$FILE $DIR
 echo 'Tar Complete'
+
+if [ $TYPE -eq 1 ]
+then
 ftp -n -i $SERVER <<EOF
 user $USERNAME $PASSWORD
 binary
 put $FILE $REMOTEDIR/$FILE
 quit
 EOF
-echo 'External Backup Complete'
-rm -f $FILE
-echo 'Localy backup removed'
 elif [ $TYPE -eq 2 ]
 then
-echo "Please use FTP, SFTP isn't supported"
+sshpass -p $PASSWORD $USERNAME@$SERVER
+cd $REMOTDIR
+put ./$FILE
+exit
 else
-echo "Please select a valid type"
+echo 'Please select a valid type'
 fi
+
+echo 'Remote Backup Complete'
+clean_backup
 #END

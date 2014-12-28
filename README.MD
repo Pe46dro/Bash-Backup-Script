@@ -19,9 +19,13 @@ If you have some problem open an issues on GitHub
 
 * Q: Why can't I start the script?
 
-    A: Try changing the files permission [link](http://www.cyberciti.biz/faq/how-to-use-chmod-and-chown-command/)
+    A: Make the file executable (chmod -x script.sh)
 
 
 * Q: Will this work on all linux distros?
 
     A: This script was tested on Ubuntu 12/14,Debian and Centos 6 and has worked whitout any problems
+	
+* Q: Why SFTP don't work?
+
+    A: You need to install "sshpass" ( apt-get install sshpass )
