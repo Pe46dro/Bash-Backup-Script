@@ -4,9 +4,9 @@
 A small script to upload backup tar to an external FTP server
 
 How it works:
-* You need to change "USERNAME,PASSWORD,SERVER" whit information of your server
-* You need to change "DIR" whit absolute position of folder/file you want backup
-* You need to change "FILE" whit results of compression
+* You need to change "USERNAME,PASSWORD,SERVER" with information of your server
+* You need to change "DIR" with absolute position of folder/file you want backup
+* You need to change "FILE" with results of compression
 
 If you have some problem open an issues on GitHub
 
