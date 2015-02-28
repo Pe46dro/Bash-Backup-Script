@@ -19,6 +19,7 @@ clean_backup() {
 USERNAME="USERNAME HERE"
 PASSWORD="PASSWORD HERE"
 SERVER="IP HERE"
+$PORT="REMOTE SERVER PORT"
 
 #Directory where thing to backup is located
 DIR="/root"
@@ -54,10 +55,7 @@ quit
 EOF
 elif [ $TYPE -eq 2 ]
 then
-sshpass -p $PASSWORD $USERNAME@$SERVER
-cd $REMOTDIR
-put ./$FILE
-exit
+rsync --rsh="sshpass -p $PASSWORD ssh -p $PORT -o StrictHostKeyChecking=no -l $USERNAME" $DIR/$FILE $SERVER:$REMOTEDIR
 else
 echo 'Please select a valid type'
 fi
