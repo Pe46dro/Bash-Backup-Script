@@ -47,7 +47,7 @@ echo 'Tar Complete'
 
 if [ $TYPE -eq 1 ]
 then
-ftp -n -i $SERVER <<EOF
+ftp -n -i $SERVER $PORT <<EOF
 user $USERNAME $PASSWORD
 binary
 put $FILE $REMOTEDIR/$FILE
