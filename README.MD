@@ -1,5 +1,5 @@
 
-# [Bash]FTP Backup Script
+# [Bash] Backup Script
 [![Build Status](https://travis-ci.org/Pe46dro/Bash-FTP-Backup-Script.svg?branch=master)](https://travis-ci.org/Pe46dro/Bash-FTP-Backup-Script) [![Beerpay](https://img.shields.io/beerpay/hashdog/scrapfy-chrome-extension.svg)](https://beerpay.io/Pe46dro/Bash-FTP-Backup-Script)
 
 A small script to backup a compressed folder to an external storage
