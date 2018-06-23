@@ -1,6 +1,7 @@
 
 # [Bash]FTP Backup Script
 [![Build Status](https://travis-ci.org/Pe46dro/Bash-FTP-Backup-Script.svg?branch=master)](https://travis-ci.org/Pe46dro/Bash-FTP-Backup-Script) [![Beerpay](https://img.shields.io/beerpay/hashdog/scrapfy-chrome-extension.svg)](https://beerpay.io/Pe46dro/Bash-FTP-Backup-Script)
+
 A small script to backup a compressed folder to an external storage
 
 ### Prerequisites
@@ -22,15 +23,19 @@ If you have some problem open an issues on GitHub
 ## FAQ
 
 * Q: How can I make backups automatic?
+
     A: Yes, you can use [crontab](http://www.cyberciti.biz/faq/how-do-i-add-jobs-to-cron-under-linux-or-unix-oses/)
 
 * Q: Will this work on all linux distros?
+
     A: This script was tested on Ubuntu (12/14),Debian (8/9) and Centos 6 and has worked whitout any problems
 	
 * Q: Why SFTP don't work?
+
     A: You need to install "sshpass" ( apt-get install sshpass )
     
 * Q: Can i backup my MySQL database?
+
     A: Check my script for my [MySQL backup](https://github.com/Pe46dro/Bash-MySQL-Database-SFTP-FTP-Backup)
 
 # Contributors
