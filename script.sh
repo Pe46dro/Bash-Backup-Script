@@ -13,8 +13,10 @@ DIR="/var/www" #Directory where thing to backup is located (string)
 EXCLUSION=("/var/www/**/node_modules /var/www/**/vendor") #Directory to exclude (array space separeted)
 CHECKSUM=true #Generate backup checksum (true|false)
 ROTATION=30	  #How many day keep (int|false)	
+LOG_FILE="/var/log/bck_script.log" # Log file location (string)
+TMP_FOLDER="/tmp/" #Temp folder for archive generation
 
-# Encryption Information
+# Encryption Information (only zip)
 ENCRYPTION=false #Encryption (true|false)
 ENCRYPTION_RANDOM=false #Random key generation (true|false) (Require notification enable)
 ENCRYPTION_KEY="./my_super_secret_backup.key" #Encryption key (absolute path to file with key)
@@ -63,44 +65,96 @@ RCLONE_REMOTE=("/Root/MY_BACKUP_FOLDER") #Rclone destinations (array space separ
 BEFORE_COMMAND=false #Command to run before backup start (string|false)
 AFTER_COMMAND=false #Command to run after backup finish (string|false)
 
-
 #
 # Functions
 #
 
-check_configuration() { #TODO
-	
+check_configuration() {
+	if [ "$ENCRYPTION" = true ] && [ "$ENCRYPTION_RANDOM" = false ]
+	then
+		if [ ! -f "$ENCRYPTION_KEY" ]
+		then
+			echo "Key file not found!" | tee -a --output-error=warn "$LOG_FILE"
+		exit 0
+		fi
+		
+		if [ "$(stat -c %A "$ENCRYPTION_KEY")" != "-rw-------" ]
+		then
+			echo "WARNING: UNPROTECTED PRIVATE KEY FILE!" | tee -a --output-error=warn "$LOG_FILE"
+        echo "Permissions for '$ENCRYPTION_KEY' are too open. It is recommended that your private key files are NOT accessible by others." | tee -a --output-error=warn "$LOG_FILE"
+		exit 0
+		fi
+		
+	fi
 }
 
-generate_file_name() { #TODO
+generate_file_name() {
 	d=$(date '+%Y-%m-%d_%H')
-	FILE="$FILE""_$d.tar.gz"
+	FILE="$FILE""_$d.$EXT"
+	
+	if [ "$ROTATION" != false ]
+	then
+		d=$(date --date="-$ROTATION day" '+%Y-%m-%d_%H')
+		RFILE="$FILE""_$d.$EXT"
+	fi
+
 }
 
 generate_key(){
-	$KEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+	KEY=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n 1)
 }
 
-read_key(){ #TODO
+read_key(){
+	KEY=$(cat "$ENCRYPTION_KEY")
+}
+
+generate_backup(){
+
+	if [ "$EXT" = "tar" ]
+	then
+		for EXL in "${EXCLUSION[@]}"
+		do
+			PARAMS="$PARAMS --exclude='$EXL' "
+		done
 	
-}
-
-generate_backup_command(){
-	tar -czvf "./$FILE" "$DIR"
-	echo 'Tar Complete'
+		tar -czvf "$TMP_FOLDER$FILE" "$DIR"  | tee -a "$LOG_FILE"
+		echo 'Tar Complete' | tee -a "$LOG_FILE"
+	elif [ "$EXT" = "zip" ]
+	then
+	
+		if [ "$ENCRYPTION" = true ]
+		then
+			PARAMS="--password $KEY "
+		fi
+	
+		for EXL in "${EXCLUSION[@]}"
+		do
+			PARAMS="$PARAMS --exclude '$EXL'"
+		done
+	
+		zip "$PARAMS" -r "$TMP_FOLDER$FILE" "$DIR"
+		echo 'Zip Complete' | tee -a "$LOG_FILE"
+	fi
+	
 }
 
 ftp_upload(){
 	ftp -n -i "$SERVER" "$PORT" <<EOF
 	user "$USERNAME" "$PASSWORD"
 	binary
-	put "$FILE" "$REMOTEDIR"/"$FILE"
+	put "$TMP_FOLDER$FILE" "$REMOTEDIR"/"$FILE"
 	quit
 EOF
 }
 
-ftp_rotation(){ #TODO
-
+ftp_rotation(){
+	ftp -n -i "$SERVER" "$PORT" <<EOF
+	user "$USERNAME" "$PASSWORD"
+	binary
+	cd "$REMOTEDIR"
+	delete "$RFILE"
+	quit
+EOF
 }
 
 sftp_upload(){
@@ -108,40 +162,53 @@ sftp_upload(){
 }
 
 sftp_rotation(){ #TODO
-
+	ssh "$USERNAME"@"$SERVER" 'rm "$REMOTEDIR$RFILE"'
+	true;
 }
 
-mega_upload(){ #TODO
-	
+mega_upload(){
+	"$MEGATOOLS_PATH"/megaput --path "$MEGA_DESTIONATION" "$TMP_FOLDER$FILE"
 }
 
-mega_rotation(){ #TODO
-	
+mega_rotation(){
+	"$MEGATOOLS_PATH"/megarm "$MEGA_DESTIONATION$RFILE"
 }
 
-rclone_upload($rclone_destination){ #TODO
-	
+rclone_upload () { #TODO
+	true;
 }
 
-rclone_rotation($rclone_destination){ #TODO
-	
+rclone_rotation () { #TODO
+	true;
 }
 
-generate_checksum(){ #TODO
-	
+generate_checksum(){
+	md5sum "$TMP_FOLDER$FILE" | tee -a "$LOG_FILE"
 }
 
 telegram_notification(){
-	curl -s -X POST https://api.telegram.org/bot$apiToken/sendMessage -F document=@"LOG_FILE" -F caption="Text Message with attachment" -d chat_id=$chatId #TODO
+	# $1 Chat id
+	curl -s -X POST https://api.telegram.org/bot"$TELEGRAM_KEY"/sendMessage -F document=@"$LOG_FILE" -F caption="Backup log" -d chat_id="$1"
 }
 
 smtp_notification(){
-	mailx -a file.txt -s "Subject" user@domain.com < /dev/null #TODO
+	 # $1 Email address
+	mailx -v -s "Backup completed" \
+	-S smtp-use-starttls \
+	-S ssl-verify=ignore \
+	-S smtp-auth=login \
+	-S smtp=smtp://"$SMTP_IP":"$SMTP_PORT" \
+	-S from="$SMTP_FROM" \
+	-S smtp-auth-user="$SMTP_AUTH_USER" \
+	-S smtp-auth-password="$SMTP_AUTH_PASSWORD" \
+	-S ssl-verify=ignore \
+	-A "$LOG_FILE"
+	"$1" | tee -a "$LOG_FILE"
 }
 
 clean_backup() {
-	rm -f "./$FILE"
-	echo 'Local Backup Removed'
+	rm -f "$TMP_FOLDER$FILE"
+	echo 'Local Backup Removed' | tee -a "$LOG_FILE"
 }
 
 #
@@ -152,6 +219,7 @@ check_configuration
 
 if [ "$BEFORE_COMMAND" != false ]
 then
+	# shellcheck disable=SC2091
 	$($BEFORE_COMMAND)
 fi
 
@@ -165,26 +233,29 @@ then
 	read_key
 fi
 	
-generate_backup_command
+generate_backup
 
 for operation in "${TYPE[@]}"
 do
 	if [ "$operation" -eq 1 ]
 	then
-		ftp_upload()
+		ftp_upload
 		if [ "$ROTATION" != false ]
+		then
 			ftp_rotation
 		fi
 	elif [ "$operation" -eq 2 ]
 	then
-		sftp_upload()
+		sftp_upload
 		if [ "$ROTATION" != false ]
+		then
 			sftp_rotation
 		fi
 	elif [ "$operation" -eq 3 ]
 	then
-		mega_upload()
+		mega_upload
 		if [ "$ROTATION" != false ]
+		then
 			mega_rotation
 		fi
 	elif [ "$operation" -eq 4 ]
@@ -193,15 +264,17 @@ do
 		do
 			rclone_upload "$rclone_destination"
 			if [ "$ROTATION" != false ]
+			then
 				rclone_rotation
 			fi
 		done
 	else
-		echo 'Invalid backup type option'
+		echo "$operation is not a valid backup type option" | tee -a "$LOG_FILE"
 	fi
 done
 
 if [ "$CHECKSUM" = true ]
+then
 	generate_checksum
 fi
 
@@ -211,19 +284,26 @@ then
 	do
 		if [ "$notification_operation" -eq 1 ]
 		then
-			telegram_notification()
+			for chat_id in "${TELEGRAM_CHAT[@]}"
+			do
+				telegram_notification "$chat_id"
+			done
 		elif [ "$notification_operation" -eq 2 ]
 		then
-			smtp_notification()
+			for email_add in "${SMTP_TO[@]}"
+			do
+				smtp_notification "$email_add"
+			done
 		fi
 	done
 fi
 
-echo 'Remote Backup Complete'
+echo 'Remote Backup Complete' | tee -a "$LOG_FILE"
 clean_backup
 
 if [ "$AFTER_COMMAND" != false ]
 then
+	# shellcheck disable=SC2091
 	$($AFTER_COMMAND)
 fi
 
