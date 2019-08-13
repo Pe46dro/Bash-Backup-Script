@@ -42,9 +42,8 @@ SMTP_TO=("me@my_email") #Multiple recipient support (array space separeted)
 #Transfer type
 #1=FTP
 #2=SFTP
-#3=Megatools
-#4=Rclone
-TYPE=(1 2 3 4) #Multiple destinations support (array space separeted)
+#3=Rclone
+TYPE=(1 2 3) #Multiple destinations support (array space separeted)
 
 # (S)FTP Login Data
 USERNAME="USERNAME HERE" #Login username (string)
@@ -81,7 +80,7 @@ check_configuration() {
 		if [ "$(stat -c %A "$ENCRYPTION_KEY")" != "-rw-------" ]
 		then
 			echo "WARNING: UNPROTECTED PRIVATE KEY FILE!" | tee -a --output-error=warn "$LOG_FILE"
-        echo "Permissions for '$ENCRYPTION_KEY' are too open. It is recommended that your private key files are NOT accessible by others." | tee -a --output-error=warn "$LOG_FILE"
+       			echo "Permissions for '$ENCRYPTION_KEY' are too open. It is recommended that your private key files are NOT accessible by others." | tee -a --output-error=warn "$LOG_FILE"
 		exit 0
 		fi
 		
@@ -162,24 +161,19 @@ sftp_upload(){
 }
 
 sftp_rotation(){ #TODO
-	ssh "$USERNAME"@"$SERVER" 'rm "$REMOTEDIR$RFILE"'
+	ssh "$USERNAME"@"$SERVER" 'find $REMOTEDIR -type f -mtime +$ROTATION -exec rm {} \;'
 	true;
 }
 
-mega_upload(){
-	"$MEGATOOLS_PATH"/megaput --path "$MEGA_DESTIONATION" "$TMP_FOLDER$FILE"
+rclone_upload () {
+	# $1 RClone remote
+	"$RCLONE_PATH"/rclone copy "$TMP_FOLDER$FILE" "$1"
+	
 }
 
-mega_rotation(){
-	"$MEGATOOLS_PATH"/megarm "$MEGA_DESTIONATION$RFILE"
-}
-
-rclone_upload () { #TODO
-	true;
-}
-
-rclone_rotation () { #TODO
-	true;
+rclone_rotation () {
+	# $1 RClone remote
+	"$RCLONE_PATH"/rclone delete "$1" --min-age $ROTATIONd
 }
 
 generate_checksum(){
@@ -252,13 +246,6 @@ do
 			sftp_rotation
 		fi
 	elif [ "$operation" -eq 3 ]
-	then
-		mega_upload
-		if [ "$ROTATION" != false ]
-		then
-			mega_rotation
-		fi
-	elif [ "$operation" -eq 4 ]
 	then
 		for rclone_destination in "${RCLONE_REMOTE[@]}"
 		do
