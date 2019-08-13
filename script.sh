@@ -52,10 +52,6 @@ SERVER="IP HERE" #Remote server address (string)
 PORT="REMOTE SERVER PORT" #Remote server port (string)
 REMOTEDIR="./" #Remote server port (string)
 
-# Megatools Configuration
-MEGATOOLS_PATH="/usr/local/bin"  #Megatools binary folder (string)
-MEGA_DESTIONATION="/Root/MY_BACKUP_FOLDER" #Mega folder (string)
-
 # RClone Configuration
 RCLONE_PATH="/usr/local/bin"  #RClone binary folder (string)
 RCLONE_REMOTE=("/Root/MY_BACKUP_FOLDER") #Rclone destinations (array space separeted)
@@ -173,7 +169,7 @@ rclone_upload () {
 
 rclone_rotation () {
 	# $1 RClone remote
-	"$RCLONE_PATH"/rclone delete "$1" --min-age $ROTATIONd
+	"$RCLONE_PATH"/rclone delete "$1" --min-age "$ROTATION"d
 }
 
 generate_checksum(){
@@ -252,7 +248,7 @@ do
 			rclone_upload "$rclone_destination"
 			if [ "$ROTATION" != false ]
 			then
-				rclone_rotation
+				rclone_rotation "$rclone_destination"
 			fi
 		done
 	else
