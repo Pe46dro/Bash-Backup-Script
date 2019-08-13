@@ -129,7 +129,7 @@ generate_backup(){
 
                 local CMD="zip $PARAMS"
 
-                eval $CMD | tee -a "$LOG_FILE"
+                eval "$CMD" | tee -a "$LOG_FILE"
                 echo 'Zip Complete' | tee -a "$LOG_FILE"
         fi
 
