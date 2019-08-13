@@ -1,13 +1,4 @@
-language: node_js
-node_js:
-  - "lts/*"
-cache:
-  directories:
-    - "node_modules"
-before_install:
-  - npm i -g markdown-spellcheck write-good
+language: generic
 jobs:
   include:
-    - script: 'mdspell --ignore-acronyms --en-us --report README.md'
-    - script: 'write-good --yes-eprime --parse README.md || true'
     - script: 'shellcheck script.sh'
