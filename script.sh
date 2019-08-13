@@ -10,13 +10,13 @@
 FILE="BACKUP_NAME" #Filename of backup file to be transfered (string)
 EXT="zip" #Possbile value: zip,tar (string)
 DIR="/var/www" #Directory where thing to backup is located (string)
-EXCLUSION=("/var/www/**/node_modules /var/www/**/vendor") #Directory to exclude (array space separeted)
+EXCLUSION=("/var/www/**/node_modules" "/var/www/**/vendor") #Directory to exclude (array space separeted)
 CHECKSUM=true #Generate backup checksum (true|false)
 ROTATION=30	#How many day keep for better rotation use RClone (int|false)
-LOG_FILE="/var/log/bck_script.log" # Log file location (string|/dev/null)
+LOG_FILE="/dev/null" #Log file location (string|/dev/null)
 TMP_FOLDER="/tmp/" #Temp folder for archive generation
 
-# Encryption Information (only zip)
+#Encryption Information (only zip)
 ENCRYPTION=false #Encryption (true|false)
 ENCRYPTION_RANDOM=false #Random key generation (true|false) (Require notification enable)
 ENCRYPTION_KEY="./my_super_secret_backup.key" #Encryption key (absolute path to file with key)
@@ -27,22 +27,15 @@ SEND_LOG=false #Send log file (true|false)
 
 #Notifications Type
 #1= Telegram Bot
-#2= Email
+#2= FUTURE USE
 NOTIFICATION_TYPE=(1) #Multiple notifications support (array space separeted)
 
 TELEGRAM_KEY="YOUR_TELEGRAM_BOT_KEY" #Multiple notifications support (string)
 TELEGRAM_CHAT=(1) #Multiple recipient support (array space separeted)
 
-SMTP_IP="IP HERE" #SMTP Server IP (string)
-SMTP_PORT=465 #SMTP Server Port (int)
-SMTP_AUTH_USER="" #SMTP User (string)
-SMTP_AUTH_PASSWORD="" #SMTP Password (string)
-SMTP_FROM="my_backup_script@my_server" #From email (string)
-SMTP_TO=("me@my_email") #Multiple recipient support (array space separeted)
-
 #Transfer type
 #1=FTP
-#2=Rclone
+#2=Rclone https://rclone.org/
 TYPE=(1 2) #Multiple destinations support (array space separeted)
 
 # FTP(s) Login Data
@@ -54,7 +47,7 @@ REMOTEDIR="./" #Remote server port (string)
 
 # RClone Configuration
 RCLONE_PATH="/usr/local/bin"  #RClone binary folder (string)
-RCLONE_REMOTE=("/Root/MY_BACKUP_FOLDER") #Rclone destinations (array space separeted)
+RCLONE_REMOTE=("DEST1:/" "DEST2:/") #Rclone destinations (array space separeted)
 
 # Task Configuration
 BEFORE_COMMAND=false #Command to run before backup start (string|false)
@@ -70,16 +63,20 @@ check_configuration() {
 		if [ ! -f "$ENCRYPTION_KEY" ]
 		then
 			echo "Key file not found!" | tee -a --output-error=warn "$LOG_FILE"
-		exit 0
+		exit 1
 		fi
 		
 		if [ "$(stat -c %A "$ENCRYPTION_KEY")" != "-rw-------" ]
 		then
 			echo "WARNING: UNPROTECTED PRIVATE KEY FILE!" | tee -a --output-error=warn "$LOG_FILE"
        			echo "Permissions for '$ENCRYPTION_KEY' are too open. It is recommended that your private key files are NOT accessible by others." | tee -a --output-error=warn "$LOG_FILE"
-		exit 0
+		exit 1
 		fi
 		
+	fi
+	if [ "$ENCRYPTION" = true ] && [ "$ENCRYPTION_RANDOM" = true ] && [ "$NOTIFICATION" = false ]
+	then
+		echo "Random key require notification" | tee -a --output-error=warn "$LOG_FILE"
 	fi
 }
 
@@ -184,21 +181,6 @@ telegram_notification(){
         fi
 }
 
-smtp_notification(){
-	 # $1 Email address
-	mailx -v -s "Backup completed" \
-	-S smtp-use-starttls \
-	-S ssl-verify=ignore \
-	-S smtp-auth=login \
-	-S smtp=smtp://"$SMTP_IP":"$SMTP_PORT" \
-	-S from="$SMTP_FROM" \
-	-S smtp-auth-user="$SMTP_AUTH_USER" \
-	-S smtp-auth-password="$SMTP_AUTH_PASSWORD" \
-	-S ssl-verify=ignore \
-	-A "$LOG_FILE"
-	"$1" | tee -a "$LOG_FILE"
-}
-
 clean_backup() {
 	rm -f "$TMP_FOLDER$FILE"
 	echo 'Local Backup Removed' | tee -a "$LOG_FILE"
@@ -270,12 +252,6 @@ then
 			for chat_id in "${TELEGRAM_CHAT[@]}"
 			do
 				telegram_notification "$chat_id"
-			done
-		elif [ "$notification_operation" -eq 2 ]
-		then
-			for email_add in "${SMTP_TO[@]}"
-			do
-				smtp_notification "$email_add"
 			done
 		fi
 	done
