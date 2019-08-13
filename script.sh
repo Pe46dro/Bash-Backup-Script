@@ -41,11 +41,10 @@ SMTP_TO=("me@my_email") #Multiple recipient support (array space separeted)
 
 #Transfer type
 #1=FTP
-#2=SFTP
-#3=Rclone
-TYPE=(1 2 3) #Multiple destinations support (array space separeted)
+#2=Rclone
+TYPE=(1 2) #Multiple destinations support (array space separeted)
 
-# (S)FTP Login Data
+# FTP(s) Login Data
 USERNAME="USERNAME HERE" #Login username (string)
 PASSWORD="PASSWORD HERE" #Login password (string)
 SERVER="IP HERE" #Remote server address (string)
@@ -84,15 +83,13 @@ check_configuration() {
 }
 
 generate_file_name() {
-	d=$(date '+%Y-%m-%d_%H')
-	FILE="$FILE""_$d.$EXT"
-	
 	if [ "$ROTATION" != false ]
 	then
 		d=$(date --date="-$ROTATION day" '+%Y-%m-%d_%H')
 		RFILE="$FILE""_$d.$EXT"
 	fi
-
+	d=$(date '+%Y-%m-%d_%H')
+	FILE="$FILE""_$d.$EXT"
 }
 
 generate_key(){
@@ -105,32 +102,37 @@ read_key(){
 
 generate_backup(){
 
-	if [ "$EXT" = "tar" ]
-	then
-		for EXL in "${EXCLUSION[@]}"
-		do
-			PARAMS="$PARAMS --exclude='$EXL' "
-		done
-	
-		tar -czvf "$TMP_FOLDER$FILE" "$DIR"  | tee -a "$LOG_FILE"
-		echo 'Tar Complete' | tee -a "$LOG_FILE"
-	elif [ "$EXT" = "zip" ]
-	then
-	
-		if [ "$ENCRYPTION" = true ]
-		then
-			PARAMS="--password $KEY "
-		fi
-	
-		for EXL in "${EXCLUSION[@]}"
-		do
-			PARAMS="$PARAMS --exclude '$EXL'"
-		done
-	
-		zip "$PARAMS" -r "$TMP_FOLDER$FILE" "$DIR"
-		echo 'Zip Complete' | tee -a "$LOG_FILE"
-	fi
-	
+        if [ "$EXT" = "tar" ]
+        then
+                for EXL in "${EXCLUSION[@]}"
+                do
+                        PARAMS="$PARAMS --exclude='$EXL' "
+                done
+
+                tar -czvf "$TMP_FOLDER$FILE" "$DIR"  | tee -a "$LOG_FILE"
+                echo 'Tar Complete' | tee -a "$LOG_FILE"
+        elif [ "$EXT" = "zip" ]
+        then
+
+                if [ "$ENCRYPTION" = true ]
+                then
+                        PARAMS="-P $KEY"
+                fi
+
+                for EXL in "${EXCLUSION[@]}"
+                do
+                        echo "Excluding '$EXL'"
+                        PARAMS="$PARAMS --exclude '$EXL'"
+                done
+
+                PARAMS="$PARAMS -r $TMP_FOLDER$FILE $DIR"
+
+                local CMD="zip $PARAMS"
+
+                eval $CMD | tee -a "$LOG_FILE"
+                echo 'Zip Complete' | tee -a "$LOG_FILE"
+        fi
+
 }
 
 ftp_upload(){
@@ -152,15 +154,6 @@ ftp_rotation(){
 EOF
 }
 
-sftp_upload(){
-	rsync --rsh="sshpass -p \"$PASSWORD\" ssh -p \"$PORT\" -o StrictHostKeyChecking=no -l \"$USERNAME\"" "$FILE" "$SERVER":"$REMOTEDIR"
-}
-
-sftp_rotation(){ #TODO
-	ssh "$USERNAME"@"$SERVER" 'find $REMOTEDIR -type f -mtime +$ROTATION -exec rm {} \;'
-	true;
-}
-
 rclone_upload () {
 	# $1 RClone remote
 	"$RCLONE_PATH"/rclone copy "$TMP_FOLDER$FILE" "$1"
@@ -173,12 +166,18 @@ rclone_rotation () {
 }
 
 generate_checksum(){
+	echo "MD5 HASH"
 	md5sum "$TMP_FOLDER$FILE" | tee -a "$LOG_FILE"
 }
 
 telegram_notification(){
 	# $1 Chat id
-	curl -s -X POST https://api.telegram.org/bot"$TELEGRAM_KEY"/sendMessage -F document=@"$LOG_FILE" -F caption="Backup log" -d chat_id="$1"
+	curl -F chat_id="$1" -F document=@"$LOG_FILE" https://api.telegram.org/bot"$TELEGRAM_KEY"/sendDocument
+
+	if [ "$ENCRYPTION" = true ] && [ "$ENCRYPTION_RANDOM" = true ]
+	then
+		curl -s -X POST https://api.telegram.org/bot"$TELEGRAM_KEY"/sendMessage -d chat_id="$1" -d text="Key: $KEY"
+        fi
 }
 
 smtp_notification(){
@@ -206,6 +205,10 @@ clean_backup() {
 #
 
 check_configuration
+
+echo "###########################################"  | tee -a "$LOG_FILE"
+echo "Starting backup $FILE"  | tee -a "$LOG_FILE"
+echo "###########################################"  | tee -a "$LOG_FILE"
 
 if [ "$BEFORE_COMMAND" != false ]
 then
@@ -235,13 +238,6 @@ do
 			ftp_rotation
 		fi
 	elif [ "$operation" -eq 2 ]
-	then
-		sftp_upload
-		if [ "$ROTATION" != false ]
-		then
-			sftp_rotation
-		fi
-	elif [ "$operation" -eq 3 ]
 	then
 		for rclone_destination in "${RCLONE_REMOTE[@]}"
 		do
@@ -289,5 +285,9 @@ then
 	# shellcheck disable=SC2091
 	$($AFTER_COMMAND)
 fi
+
+echo "###########################################"  | tee -a "$LOG_FILE"
+echo "Ending backup $FILE"  | tee -a "$LOG_FILE"
+echo "###########################################"  | tee -a "$LOG_FILE"
 
 #END
