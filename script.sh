@@ -8,12 +8,12 @@
 
 # Backup Information
 FILE="BACKUP_NAME" #Filename of backup file to be transfered (string)
-EXT="zip" # Possbile value: zip,tar (string)
+EXT="zip" #Possbile value: zip,tar (string)
 DIR="/var/www" #Directory where thing to backup is located (string)
 EXCLUSION=("/var/www/**/node_modules /var/www/**/vendor") #Directory to exclude (array space separeted)
 CHECKSUM=true #Generate backup checksum (true|false)
-ROTATION=30	  #How many day keep (int|false)	
-LOG_FILE="/var/log/bck_script.log" # Log file location (string)
+ROTATION=30	#How many day keep for better rotation use RClone (int|false)
+LOG_FILE="/var/log/bck_script.log" # Log file location (string|/dev/null)
 TMP_FOLDER="/tmp/" #Temp folder for archive generation
 
 # Encryption Information (only zip)
@@ -23,6 +23,7 @@ ENCRYPTION_KEY="./my_super_secret_backup.key" #Encryption key (absolute path to 
 
 #Notifications information
 NOTIFICATION=false #Notifications (true|false)
+SEND_LOG=false #Send log file (true|false)
 
 #Notifications Type
 #1= Telegram Bot
@@ -114,7 +115,7 @@ generate_backup(){
         elif [ "$EXT" = "zip" ]
         then
 
-                if [ "$ENCRYPTION" = true ]
+                if [ "$ENCRYPTION" = true ] && [ "$NOTIFICATION" = true ]
                 then
                         PARAMS="-P $KEY"
                 fi
@@ -172,8 +173,11 @@ generate_checksum(){
 
 telegram_notification(){
 	# $1 Chat id
+	if [ "$SEND_LOG" = true ]
+	then
 	curl -F chat_id="$1" -F document=@"$LOG_FILE" https://api.telegram.org/bot"$TELEGRAM_KEY"/sendDocument
-
+	fi
+	
 	if [ "$ENCRYPTION" = true ] && [ "$ENCRYPTION_RANDOM" = true ]
 	then
 		curl -s -X POST https://api.telegram.org/bot"$TELEGRAM_KEY"/sendMessage -d chat_id="$1" -d text="Key: $KEY"
